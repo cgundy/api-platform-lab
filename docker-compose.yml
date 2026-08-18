@@ -40,6 +40,22 @@ name: api-platform-lab
 #
 # Every upstream is ALSO published on localhost (ports 9001-9005) so you can
 # compare "straight to the service" against "through the gateway".
+#
+# ------------------------------------------------------------------------------
+# A NOTE ON `ports:`
+#
+# Each container is its own little sealed box - nothing outside it can reach
+# anything inside it by default. A `ports:` entry is a door: it connects one
+# port on your Mac to one port inside that container, so a service becomes
+# reachable at all. No entry, no door, no access - which is exactly the
+# default posture you want for anything that doesn't need to be public.
+#
+# Every service below opens exactly one door, because each is one HTTP server.
+# Where a service listens on the box side is arbitrary bookkeeping, not
+# meaningful - what matters is *that* a door exists, and that every one of
+# them is bound to 127.0.0.1 (see SECURITY POSTURE above), so the only thing
+# that can walk through any of these doors is you, on this machine.
+# ------------------------------------------------------------------------------
 
 services:
   # ---------------------------------------------------------------------------
@@ -49,11 +65,7 @@ services:
     image: nginx:1.27-alpine@sha256:65645c7bb6a0661892a8b03b89d0743208a18dd2f3f17a54ef4b76fb8e2f2a10
     container_name: lab-gateway
     hostname: gateway
-    # host:container. Bound to 127.0.0.1 only (not 0.0.0.0), so nothing on
-    # your LAN can reach these - see SECURITY POSTURE above. Host side uses
-    # 8080/8443 instead of 80/443 so the lab needs no sudo and can't collide
-    # with anything else already using the standard ports; the container
-    # side is nginx's own 80/443, untouched.
+    # The gateway's door - this is the one you actually knock on with curl.
     ports:
       - "127.0.0.1:8080:80"
       - "127.0.0.1:8443:443"
@@ -97,12 +109,8 @@ services:
     environment:
       HTTP_PORT: "8080"
       HTTPS_PORT: "8443"
-    # Published directly on the host, same as every other backend (9001-9005,
-    # picked arbitrarily above the ephemeral-port range so they stay memorable
-    # and out of each other's way). This is what makes it possible to diff
-    # "straight to the service" (curl :9001) against "through the gateway"
-    # (curl :8080/users/) - the whole point of the lab. Container side 8080
-    # comes from HTTP_PORT above, not the image default.
+    # This backend's own door - lets you compare "straight to the service"
+    # against going through the gateway.
     ports:
       - "127.0.0.1:9001:8080"
     cap_drop: [ALL]
@@ -117,7 +125,7 @@ services:
     environment:
       HTTP_PORT: "8080"
       HTTPS_PORT: "8443"
-    # Same reasoning as users1's ports above - next number in the sequence.
+    # Its own door, same idea as users1.
     ports:
       - "127.0.0.1:9002:8080"
     cap_drop: [ALL]
@@ -134,9 +142,7 @@ services:
     image: mccutchen/go-httpbin:2.25.0@sha256:20739736d4eb8dc1b998dff701f437b8bd62dcc46492bd0d861e89890ca36500
     container_name: lab-orders
     hostname: orders
-    # go-httpbin's own default listen port is 8080, so unlike users1/users2
-    # there's no env var pinning it - the container side just is 8080. Host
-    # side continues the 900x sequence.
+    # Its own door.
     ports:
       - "127.0.0.1:9003:8080"
     cap_drop: [ALL]
@@ -153,9 +159,7 @@ services:
     image: mccutchen/go-httpbin:2.25.0@sha256:20739736d4eb8dc1b998dff701f437b8bd62dcc46492bd0d861e89890ca36500
     container_name: lab-flaky1
     hostname: flaky1
-    # Same image/port pattern as orders. Two flaky instances (9004, 9005) so
-    # lab 04's retries have a second backend to fail over to, same as
-    # users1/users2 do for load balancing.
+    # Its own door.
     ports:
       - "127.0.0.1:9004:8080"
     cap_drop: [ALL]
@@ -168,7 +172,7 @@ services:
     container_name: lab-flaky2
     hostname: flaky2
     ports:
-      - "127.0.0.1:9005:8080"  # see flaky1 above
+      - "127.0.0.1:9005:8080"  # its own door, same idea as flaky1
     cap_drop: [ALL]
     security_opt:
       - no-new-privileges:true
@@ -186,12 +190,11 @@ services:
     command: ["-host=0.0.0.0", "-config=/config/toxiproxy.json"]
     volumes:
       - ./toxiproxy/toxiproxy.json:/config/toxiproxy.json:ro
-    # Only the admin API (8474, used by bin/chaos.sh to inject/remove chaos)
-    # is published to the host. The actual proxied listener - port 21001,
-    # defined in toxiproxy/toxiproxy.json - is deliberately NOT published:
-    # the gateway reaches it over the internal docker network only, the same
-    # way it reaches every other backend, so there's no way to accidentally
-    # bypass toxiproxy from your host the way you can with orders on :9003.
+    # This container actually has two doors, but only one is opened here:
+    # its admin door (for bin/chaos.sh to inject/remove chaos through). The
+    # door the gateway's traffic actually flows through stays unopened on
+    # purpose, reachable only from other containers - so there's no way to
+    # bypass the chaos layer from your host.
     ports:
       - "127.0.0.1:8474:8474"
     cap_drop: [ALL]
