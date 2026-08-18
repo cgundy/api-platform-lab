@@ -273,12 +273,12 @@ All images are arm64-native, so nothing runs under emulation on Apple Silicon.
 | `/lab1/` | echo1, no headers set | lab 01 |
 | `/lab1-fixed/` | echo1, headers set properly | lab 01 |
 | `/match/...` | returns which location matched | lab 02 |
-| `/strip/`, `/nostrip/` | users pool, different upstream paths | lab 02 |
-| `/balanced/` | users pool (balanced) | lab 03 |
+| `/strip/`, `/nostrip/` | echo pool, different upstream paths | lab 02 |
+| `/balanced/` | echo pool (balanced) | lab 03 |
 | `/network-chaos/` | random-status-code-with-caching, via toxiproxy | labs 04, 08 |
 | `/flaky/` | flaky pool (random-status-code-1/-2) | lab 04 |
 | `/cached/` | random-status-code-with-caching, via toxiproxy | lab 05 |
-| `/limited/`, `/limited-by-key/`, `/concurrent/` | users pool / random-status-code-with-caching | lab 06 |
+| `/limited/`, `/limited-by-key/`, `/concurrent/` | echo pool / random-status-code-with-caching | lab 06 |
 | `/healthz` | the gateway itself | everywhere |
 
 ---
