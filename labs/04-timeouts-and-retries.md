@@ -121,9 +121,9 @@ can't make a retry safe.
 This is the one that takes down real systems.
 
 ```bash
-docker compose stop flaky2
+docker compose stop random-status-code-2
 bin/loadtest.sh '/flaky/status/200:0.5,500:0.5' 60 10
-docker compose start flaky2
+docker compose start random-status-code-2
 ```
 
 With one backend gone, every failure retries onto the survivor. You removed 50%

@@ -2,7 +2,7 @@
   {
     "name": "orders",
     "listen": "0.0.0.0:21001",
-    "upstream": "orders:8080",
+    "upstream": "random-status-code-with-caching:8080",
     "enabled": true
   }
 ]

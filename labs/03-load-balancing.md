@@ -15,7 +15,7 @@ for i in $(seq 1 6); do
 done
 ```
 
-Strict alternation: `users1`, `users2`, `users1`, `users2`… That's nginx's
+Strict alternation: `echo1`, `echo2`, `echo1`, `echo2`… That's nginx's
 default and it needs no configuration at all — listing two `server` lines in an
 `upstream` block was enough.
 
@@ -31,7 +31,7 @@ for i in $(seq 1 8); do
 done
 ```
 
-Every request now hits `users1`. But run concurrent load and check the log:
+Every request now hits `echo1`. But run concurrent load and check the log:
 
 ```bash
 bin/loadtest.sh /users/ 60 8 > /dev/null
@@ -61,8 +61,8 @@ Change `users_pool` in `nginx.conf`:
 
 ```nginx
 upstream users_pool {
-    server users1:8080 weight=3;
-    server users2:8080;
+    server echo1:8080 weight=3;
+    server echo2:8080;
 }
 ```
 
@@ -130,20 +130,20 @@ Comment `ip_hash` back out before continuing.
 With the pool back to plain round-robin:
 
 ```bash
-docker compose stop users2
+docker compose stop echo2
 bin/loadtest.sh /users/ 20 1
 ```
 
 You'll see a few 502s at first, then clean 200s. nginx noticed the connection
-was refused, marked `users2` failed, and stopped sending to it.
+was refused, marked `echo2` failed, and stopped sending to it.
 
 That's a **passive health check** — nginx learns a backend is down by *failing a
 real user's request against it*. Some of your users paid for that discovery.
 Make the behavior explicit:
 
 ```nginx
-server users1:8080;
-server users2:8080 max_fails=2 fail_timeout=10s;
+server echo1:8080;
+server echo2:8080 max_fails=2 fail_timeout=10s;
 ```
 
 Two failures inside 10s ejects the backend for 10s, then it's tried again.
@@ -153,12 +153,12 @@ Tuning is a real tradeoff: `max_fails=1` ejects fast but flaps on a single blip;
 Bring it back and watch traffic return:
 
 ```bash
-docker compose start users2
+docker compose start echo2
 ```
 
-One trap while `users2` is stopped: **don't restart the gateway.** nginx
+One trap while `echo2` is stopped: **don't restart the gateway.** nginx
 resolves upstream hostnames once at startup and refuses to boot if one doesn't
-resolve — you'd get `host not found in upstream "users2"` and a dead gateway.
+resolve — you'd get `host not found in upstream "echo2"` and a dead gateway.
 Start the backend first. Production configs work around this with a `resolver`
 directive and a variable in `proxy_pass`, which defers the lookup to request
 time.

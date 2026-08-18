@@ -2,8 +2,9 @@
 
 Everything so far assumed the network either works or refuses. Real networks
 fail in more interesting ways, and those are the ones that take systems down.
-Toxiproxy sits between the gateway and `orders`, so you can damage the wire
-itself at runtime.
+Toxiproxy sits between the gateway and the `/orders/` backend
+(`random-status-code-with-caching`), so you can damage the wire itself at
+runtime.
 
 ```bash
 bin/chaos.sh status

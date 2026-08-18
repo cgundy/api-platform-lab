@@ -38,7 +38,7 @@ else bad "docker-compose.yml is valid" "$(head -3 /tmp/dc.$$)"; fi
 rm -f /tmp/dc.$$
 
 # 2. every container is up
-for c in lab-gateway lab-users1 lab-users2 lab-orders lab-flaky1 lab-flaky2 lab-toxiproxy; do
+for c in lab-gateway lab-echo1 lab-echo2 lab-random-status-code-with-caching lab-random-status-code-1 lab-random-status-code-2 lab-toxiproxy; do
   if docker ps --format '{{.Names}}' 2>/dev/null | grep -qx "$c"; then ok "$c running"
   else bad "$c running"; fi
 done

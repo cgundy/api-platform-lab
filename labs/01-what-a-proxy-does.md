@@ -27,10 +27,10 @@ curl -s http://localhost:8080/lab1/hello | python3 -m json.tool
 Diff the two outputs. Four things changed, and every one of them breaks
 something real:
 
-**`host` is now `users1:8080`.** nginx defaulted it to the upstream's address.
+**`host` is now `echo1:8080`.** nginx defaulted it to the upstream's address.
 Your backend has lost all knowledge of the domain the user typed. Anything that
 generates absolute URLs (password reset links, pagination `next` URLs,
-redirects, OAuth callbacks) will now emit `http://users1:8080/...` and hand it
+redirects, OAuth callbacks) will now emit `http://echo1:8080/...` and hand it
 to a browser that cannot resolve it. Virtual hosting — several sites behind one
 IP — becomes impossible.
 
@@ -112,13 +112,13 @@ whole header because it looks official is the bug.
 ## Step 6 — see the two connections
 
 ```bash
-docker compose exec gateway wget -qO- http://users1:8080/hello
+docker compose exec gateway wget -qO- http://echo1:8080/hello
 ```
 
-That worked from inside the container network, using a hostname (`users1`) that
+That worked from inside the container network, using a hostname (`echo1`) that
 does not exist on your Mac — Docker's embedded DNS resolves service names on
 the compose network. Your `curl` to `localhost:8080` and nginx's connection to
-`users1:8080` are two entirely separate TCP connections with different source
+`echo1:8080` are two entirely separate TCP connections with different source
 addresses, different lifetimes, and potentially different HTTP versions.
 
 ## What you learned

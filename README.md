@@ -60,10 +60,18 @@ Seven containers, zero application code:
 - **`gateway`** — `nginx`, the one thing you edit. Terminates TLS, routes by
   path, load-balances, rate-limits, and caches, depending on which lab you're
   in.
-- **Five stock backend images** (`users1`/`users2`, `orders`, `flaky1`/`flaky2`)
-  — off-the-shelf echo and test servers, not code written for this lab. They
-  exist so you have something real to point the gateway at.
-- **`toxiproxy`** — sits on the wire between the gateway and `orders` and lets
+- **Five stock backend images** (`echo1`/`echo2`, `random-status-code-with-caching`,
+  `random-status-code-1`/`random-status-code-2`) — off-the-shelf test servers,
+  not code written for this lab, named for what they actually do rather than
+  for the fictional business routes (`/users/`, `/orders/`) the gateway fronts
+  them with. `echo1`/`echo2` just echo your request back as JSON.
+  `random-status-code-with-caching` and the `random-status-code-1`/`-2` pair
+  all run the *same* image (`go-httpbin`) and are equally capable of both
+  tricks — they're only split up because the labs use them for different
+  things: the former for delay/cache/etag and network chaos, the pair for
+  demonstrating retries against random failures.
+- **`toxiproxy`** — sits on the wire between the gateway and
+  `random-status-code-with-caching` and lets
   you inject latency, bandwidth throttling, or a dead connection at runtime,
   without restarting anything, so you can watch how the gateway's timeout and
   retry settings actually behave under failure (lab 08).
@@ -131,7 +139,7 @@ curl -s http://localhost:8080/users/hello | python3 -m json.tool
 
 The second one returns a JSON echo of your own request as the backend received
 it. Run it a few times and watch the `os.hostname` field alternate between
-`users1` and `users2` — you're already load balancing.
+`echo1` and `echo2` — you're already load balancing.
 
 ### 4. Make the scripts executable
 
@@ -165,7 +173,7 @@ finds it by the `name: api-platform-lab` set at the top of the file).
 
 There's also a [`Makefile`](Makefile) with a short target for most of these —
 run `make help` to list them (`make up`, `make ps`, `make logs`,
-`make logs SERVICE=orders`, `make check`, `make restart`, `make reload`,
+`make logs SERVICE=random-status-code-with-caching`, `make check`, `make restart`, `make reload`,
 `make reset`, ...). `make <TAB>` tab-completes target names in bash and zsh
 without any extra setup, so it's the fastest way to drive the lab without
 typing `docker compose` every time.
@@ -203,7 +211,7 @@ docker inspect lab-gateway --format '{{json .State.Health}}' | python3 -m json.t
 ```bash
 docker compose logs -f gateway         # follow one service (leave this open in a second terminal)
 docker compose logs -f                 # follow everything, interleaved
-docker compose logs --tail 50 orders   # last 50 lines, no follow
+docker compose logs --tail 50 echo1    # last 50 lines, no follow
 ```
 
 ### Getting inside a container
@@ -242,11 +250,11 @@ docker compose down -v && docker compose up -d --force-recreate   # nuke and reb
 | Service | Host port | Image | Role |
 |---|---|---|---|
 | `gateway` | 8080, 8443 | `nginx:1.27-alpine` | the thing you edit |
-| `users1` | 9001 | `mendhak/http-https-echo` | echoes the request back as JSON |
-| `users2` | 9002 | `mendhak/http-https-echo` | second instance, for balancing |
-| `orders` | 9003 | `mccutchen/go-httpbin` | `/delay`, `/cache`, `/etag`, `/bytes` |
-| `flaky1` | 9004 | `mccutchen/go-httpbin` | returns 500s on request |
-| `flaky2` | 9005 | `mccutchen/go-httpbin` | second instance, for retries |
+| `echo1` | 9001 | `mendhak/http-https-echo` | echoes the request back as JSON |
+| `echo2` | 9002 | `mendhak/http-https-echo` | second instance, for balancing |
+| `random-status-code-with-caching` | 9003 | `mccutchen/go-httpbin` | `/delay`, `/cache`, `/etag`, `/bytes` — plus `/status` |
+| `random-status-code-1` | 9004 | `mccutchen/go-httpbin` | same image, used for `/status/200:0.5,500:0.5` |
+| `random-status-code-2` | 9005 | `mccutchen/go-httpbin` | second instance, for retries |
 | `toxiproxy` | 8474 | `ghcr.io/shopify/toxiproxy` | network damage, admin API |
 
 Every backend is published directly on the host as well as being reachable
@@ -259,15 +267,15 @@ All images are arm64-native, so nothing runs under emulation on Apple Silicon.
 
 | Route | Goes to | Used by |
 |---|---|---|
-| `/lab1/` | users1, no headers set | lab 01 |
-| `/lab1-fixed/` | users1, headers set properly | lab 01 |
+| `/lab1/` | echo1, no headers set | lab 01 |
+| `/lab1-fixed/` | echo1, headers set properly | lab 01 |
 | `/match/...` | returns which location matched | lab 02 |
 | `/strip/`, `/nostrip/` | users pool, different upstream paths | lab 02 |
 | `/users/` | users pool (balanced) | lab 03 |
-| `/orders/` | orders, via toxiproxy | labs 04, 08 |
-| `/flaky/` | flaky pool | lab 04 |
-| `/cached/` | orders, via toxiproxy | lab 05 |
-| `/limited/`, `/limited-by-key/`, `/concurrent/` | users / orders | lab 06 |
+| `/orders/` | random-status-code-with-caching, via toxiproxy | labs 04, 08 |
+| `/flaky/` | flaky pool (random-status-code-1/-2) | lab 04 |
+| `/cached/` | random-status-code-with-caching, via toxiproxy | lab 05 |
+| `/limited/`, `/limited-by-key/`, `/concurrent/` | users pool / random-status-code-with-caching | lab 06 |
 | `/healthz` | the gateway itself | everywhere |
 
 ---
@@ -346,17 +354,17 @@ docker compose exec gateway nginx -t
 If the container is dead, `nginx -t` can't run in it. Fix the file and
 `docker compose up -d gateway`.
 
-**`host not found in upstream "users2"`** — you restarted the gateway while a
+**`host not found in upstream "echo2"`** — you restarted the gateway while a
 backend container was stopped. nginx resolves upstream hostnames once, at
 startup, and refuses to start if one is missing. Start the backend first
-(`docker compose start users2`), then the gateway. This trips people up
+(`docker compose start echo2`), then the gateway. This trips people up
 constantly in containerized setups; the production workaround is a `resolver`
 directive plus a variable in `proxy_pass`, which forces runtime DNS lookups.
 
 **Every request hangs** — usually leftover chaos. `bin/chaos.sh reset`.
 
 **502 on `/users/`** — a backend is stopped. `docker compose ps`, then
-`docker compose start users2`.
+`docker compose start echo2`.
 
 **All sequential requests go to one backend** — you removed `zone users_pool 64k;`
 from the upstream block. Without it every nginx worker keeps a separate

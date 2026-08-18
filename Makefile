@@ -20,7 +20,7 @@ stop: ## stop containers without removing them
 ps: ## what's running, with health and ports
 	docker compose ps
 
-logs: ## follow logs for SERVICE (default: gateway) - e.g. make logs SERVICE=orders
+logs: ## follow logs for SERVICE (default: gateway) - e.g. make logs SERVICE=echo1
 	docker compose logs -f $(SERVICE)
 
 restart: ## restart SERVICE (default: gateway) - drops in-flight connections

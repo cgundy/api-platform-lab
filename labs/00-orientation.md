@@ -10,9 +10,9 @@ Before changing anything, get familiar with the pieces. ~10 minutes.
       v
   gateway (nginx)  :8080
       |
-      +--> users_pool  --> users1 :9001 , users2 :9002    echo servers
-      +--> orders_pool --> toxiproxy --> orders :9003     go-httpbin
-      +--> flaky_pool  --> flaky1 :9004 , flaky2 :9005    go-httpbin
+      +--> users_pool  --> echo1 :9001 , echo2 :9002                                  echo servers
+      +--> orders_pool --> toxiproxy --> random-status-code-with-caching :9003        go-httpbin
+      +--> flaky_pool  --> random-status-code-1 :9004 , random-status-code-2 :9005    go-httpbin
 ```
 
 The gateway is the only thing you edit. The backends are stock images and never
@@ -55,7 +55,7 @@ curl -s http://localhost:9001/hello | python3 -m json.tool
 ```
 
 Note `path`, `headers`, and `os.hostname`. That `hostname` is how you'll tell
-`users1` from `users2` later.
+`echo1` from `echo2` later.
 
 go-httpbin has behaviors built in, which is why this lab needs no code:
 

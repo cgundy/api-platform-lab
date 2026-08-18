@@ -24,9 +24,9 @@ name: api-platform-lab
 #        |
 #   gateway (nginx)  :8080 http  :8443 https
 #        |
-#        +--> users_pool  --> users1 / users2   (echo servers, show what the proxy did)
-#        +--> orders_pool --> toxiproxy --> orders  (network chaos lives here)
-#        +--> flaky_pool  --> flaky1 / flaky2   (return 500s on demand)
+#        +--> users_pool  --> echo1 / echo2   (echo servers, show what the proxy did)
+#        +--> orders_pool --> toxiproxy --> random-status-code-with-caching  (network chaos lives here)
+#        +--> flaky_pool  --> random-status-code-1 / random-status-code-2   (return 500s on demand)
 #
 # Every upstream is ALSO published on localhost (ports 9001-9005) so you can
 # compare "straight to the service" against "through the gateway".
@@ -74,11 +74,11 @@ services:
       - no-new-privileges:true
     mem_limit: 256m
     depends_on:
-      - users1
-      - users2
-      - orders
-      - flaky1
-      - flaky2
+      - echo1
+      - echo2
+      - random-status-code-with-caching
+      - random-status-code-1
+      - random-status-code-2
       - toxiproxy
     healthcheck:
       # 127.0.0.1, not localhost: busybox wget tries ::1 first, and this nginx
@@ -95,10 +95,10 @@ services:
   # balance. This image echoes the request back as JSON - headers, path, source
   # IP - which is how you SEE what a proxy does to a request.
   # ---------------------------------------------------------------------------
-  users1:
+  echo1:
     image: mendhak/http-https-echo:35@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592
-    container_name: lab-users1
-    hostname: users1
+    container_name: lab-echo1
+    hostname: echo1
     environment:
       HTTP_PORT: "8080"
       HTTPS_PORT: "8443"
@@ -112,14 +112,14 @@ services:
       - no-new-privileges:true
     mem_limit: 256m
 
-  users2:
+  echo2:
     image: mendhak/http-https-echo:35@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592
-    container_name: lab-users2
-    hostname: users2
+    container_name: lab-echo2
+    hostname: echo2
     environment:
       HTTP_PORT: "8080"
       HTTPS_PORT: "8443"
-    # Same idea as users1's ports, one door down.
+    # Same idea as echo1's ports, one door down.
     ports:
       - "127.0.0.1:9002:8080"
     cap_drop: [ALL]
@@ -128,14 +128,16 @@ services:
     mem_limit: 256m
 
   # ---------------------------------------------------------------------------
-  # "orders" service: go-httpbin. Has /delay/N, /cache/N, /etag/X, /status/NNN
-  # built in, so slow and cacheable responses need no code.
-  # Gateway traffic to this one is routed THROUGH toxiproxy (see below).
+  # Backend for the /orders/ route: go-httpbin, same image as the two
+  # random-status-code containers below. Named for what differentiates it
+  # from them here: it's also used for /delay/N, /cache/N, and /etag/X, and
+  # its traffic is routed THROUGH toxiproxy (see below) rather than hit
+  # directly, so it's where the network-chaos labs live too.
   # ---------------------------------------------------------------------------
-  orders:
+  random-status-code-with-caching:
     image: mccutchen/go-httpbin:2.25.0@sha256:20739736d4eb8dc1b998dff701f437b8bd62dcc46492bd0d861e89890ca36500
-    container_name: lab-orders
-    hostname: orders
+    container_name: lab-random-status-code-with-caching
+    hostname: random-status-code-with-caching
     # curl this side (9003) to hit it directly - the other side (8080) is
     # go-httpbin's own default listen port, not something we set.
     ports:
@@ -146,15 +148,16 @@ services:
     mem_limit: 128m
 
   # ---------------------------------------------------------------------------
-  # "flaky" service: two instances of the same image. Ask them for
-  # /status/200:0.5,500:0.5 and half the responses fail - which is what makes
-  # retries and circuit-breaking observable.
+  # Backend for the /flaky/ route: two instances of the same go-httpbin image
+  # used above, both asked for /status/200:0.5,500:0.5, which returns 500
+  # about half the time - random, not a property of the container itself.
+  # Two instances so nginx has a second one to retry against.
   # ---------------------------------------------------------------------------
-  flaky1:
+  random-status-code-1:
     image: mccutchen/go-httpbin:2.25.0@sha256:20739736d4eb8dc1b998dff701f437b8bd62dcc46492bd0d861e89890ca36500
-    container_name: lab-flaky1
-    hostname: flaky1
-    # Same idea as orders' ports.
+    container_name: lab-random-status-code-1
+    hostname: random-status-code-1
+    # Same idea as the ports above.
     ports:
       - "127.0.0.1:9004:8080"
     cap_drop: [ALL]
@@ -162,21 +165,21 @@ services:
       - no-new-privileges:true
     mem_limit: 128m
 
-  flaky2:
+  random-status-code-2:
     image: mccutchen/go-httpbin:2.25.0@sha256:20739736d4eb8dc1b998dff701f437b8bd62dcc46492bd0d861e89890ca36500
-    container_name: lab-flaky2
-    hostname: flaky2
+    container_name: lab-random-status-code-2
+    hostname: random-status-code-2
     ports:
-      - "127.0.0.1:9005:8080"  # same idea as flaky1's ports
+      - "127.0.0.1:9005:8080"  # same idea as random-status-code-1's ports
     cap_drop: [ALL]
     security_opt:
       - no-new-privileges:true
     mem_limit: 128m
 
   # ---------------------------------------------------------------------------
-  # Toxiproxy sits on the wire between the gateway and "orders". Its admin API
-  # (:8474) lets you add latency, throttle bandwidth, or blackhole the
-  # connection at runtime - no restarts. See bin/chaos.sh.
+  # Toxiproxy sits on the wire between the gateway and the /orders/ backend.
+  # Its admin API (:8474) lets you add latency, throttle bandwidth, or
+  # blackhole the connection at runtime - no restarts. See bin/chaos.sh.
   # ---------------------------------------------------------------------------
   toxiproxy:
     image: ghcr.io/shopify/toxiproxy:2.12.0@sha256:9378ed52a28bc50edc1350f936f518f31fa95f0d15917d6eb40b8e376d1a214e
@@ -187,9 +190,9 @@ services:
       - ./toxiproxy/toxiproxy.json:/config/toxiproxy.json:ro
     # This one door (8474) reaches toxiproxy's admin API, which is what
     # bin/chaos.sh talks to. It also has a second listener inside, the one
-    # that actually proxies traffic to orders (defined in toxiproxy.json) -
-    # that one has no door here on purpose, so it's only reachable from other
-    # containers, never from your host.
+    # that actually proxies traffic to random-status-code-with-caching
+    # (defined in toxiproxy.json) - that one has no door here on purpose, so
+    # it's only reachable from other containers, never from your host.
     ports:
       - "127.0.0.1:8474:8474"
     cap_drop: [ALL]
@@ -197,4 +200,4 @@ services:
       - no-new-privileges:true
     mem_limit: 128m
     depends_on:
-      - orders
+      - random-status-code-with-caching
