@@ -63,7 +63,7 @@ right or wrong — but a backend that has no idea what `/nostrip` is will return
 
 ## Step 3 — try it yourself
 
-Change `/orders/` in `nginx.conf` to drop its trailing slash:
+Change `/network-chaos/` in `nginx.conf` to drop its trailing slash:
 
 ```nginx
 proxy_pass http://orders_pool;
@@ -74,10 +74,10 @@ Then:
 ```bash
 docker compose exec gateway nginx -t
 docker compose restart gateway
-curl -si http://localhost:8080/orders/get | head -1
+curl -si http://localhost:8080/network-chaos/get | head -1
 ```
 
-404 — go-httpbin has no `/orders/get` route. Put the slash back and it's a 200
+404 — go-httpbin has no `/network-chaos/get` route. Put the slash back and it's a 200
 again. This is the fastest possible demonstration of why gateway configs get a
 reputation for being fiddly.
 
@@ -87,16 +87,16 @@ Sometimes you want a public path that doesn't match the backend's path at all �
 your API is versioned but the service isn't. Add this to the server block:
 
 ```nginx
-location /api/v1/users/ {
+location /api/v1/balanced/ {
     include /etc/nginx/snippets/proxy-headers.conf;
-    rewrite ^/api/v1/users/(.*)$ /$1 break;
+    rewrite ^/api/v1/balanced/(.*)$ /$1 break;
     proxy_pass http://users_pool;
 }
 ```
 
 ```bash
 docker compose restart gateway
-curl -s http://localhost:8080/api/v1/users/headers \
+curl -s http://localhost:8080/api/v1/balanced/headers \
   | python3 -c 'import sys,json; print(json.load(sys.stdin)["path"])'
 ```
 
@@ -124,7 +124,7 @@ server {
 Test it without touching DNS by lying about the Host header:
 
 ```bash
-curl -s -H 'Host: api.lab.local' http://localhost:8080/users/
+curl -s -H 'Host: api.lab.local' http://localhost:8080/balanced/
 ```
 
 That's virtual hosting, and it's why lab 1's point about preserving `Host`

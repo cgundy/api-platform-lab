@@ -34,7 +34,7 @@ Almost every lab is "run a curl in window 1, read the log line it produced in
 window 2". The log format is defined at the top of `nginx/nginx.conf`:
 
 ```
-172.18.0.1 "GET /users/ HTTP/1.1" -> 200 upstream=172.18.0.4:8080 ustatus=200 rt=0.004 urt=0.004 cache=- rid=abc123
+172.18.0.1 "GET /balanced/ HTTP/1.1" -> 200 upstream=172.18.0.4:8080 ustatus=200 rt=0.004 urt=0.004 cache=- rid=abc123
 ```
 
 | Field | Means |
@@ -78,7 +78,7 @@ retries and circuit breakers observable in labs 4 and 8.
 ```bash
 curl -s http://localhost:8080/
 curl -s http://localhost:8080/healthz
-curl -s http://localhost:8080/users/anything | python3 -m json.tool
+curl -s http://localhost:8080/balanced/anything | python3 -m json.tool
 ```
 
 Watch the log window while you run the last one a few times. The `upstream=`

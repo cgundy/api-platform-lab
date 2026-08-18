@@ -62,9 +62,12 @@ Seven containers, zero application code:
   in.
 - **Five stock backend images** (`echo1`/`echo2`, `random-status-code-with-caching`,
   `random-status-code-1`/`random-status-code-2`) — off-the-shelf test servers,
-  not code written for this lab, named for what they actually do rather than
-  for the fictional business routes (`/users/`, `/orders/`) the gateway fronts
-  them with. `echo1`/`echo2` just echo your request back as JSON.
+  not code written for this lab. Both container names and route names
+  (`/balanced/`, `/network-chaos/`, `/flaky/`, `/cached/`, ...) describe what
+  they demonstrate, at two different layers: the route is *what a lab is
+  teaching* (load balancing, network chaos), the container is *what's
+  actually behind it* (an echo server, a random-status generator).
+  `echo1`/`echo2` just echo your request back as JSON.
   `random-status-code-with-caching` and the `random-status-code-1`/`-2` pair
   all run the *same* image (`go-httpbin`) and are equally capable of both
   tricks — they're only split up because the labs use them for different
@@ -134,7 +137,7 @@ about 15 seconds.
 
 ```bash
 curl http://localhost:8080/healthz
-curl -s http://localhost:8080/users/hello | python3 -m json.tool
+curl -s http://localhost:8080/balanced/hello | python3 -m json.tool
 ```
 
 The second one returns a JSON echo of your own request as the backend received
@@ -271,8 +274,8 @@ All images are arm64-native, so nothing runs under emulation on Apple Silicon.
 | `/lab1-fixed/` | echo1, headers set properly | lab 01 |
 | `/match/...` | returns which location matched | lab 02 |
 | `/strip/`, `/nostrip/` | users pool, different upstream paths | lab 02 |
-| `/users/` | users pool (balanced) | lab 03 |
-| `/orders/` | random-status-code-with-caching, via toxiproxy | labs 04, 08 |
+| `/balanced/` | users pool (balanced) | lab 03 |
+| `/network-chaos/` | random-status-code-with-caching, via toxiproxy | labs 04, 08 |
 | `/flaky/` | flaky pool (random-status-code-1/-2) | lab 04 |
 | `/cached/` | random-status-code-with-caching, via toxiproxy | lab 05 |
 | `/limited/`, `/limited-by-key/`, `/concurrent/` | users pool / random-status-code-with-caching | lab 06 |
@@ -299,19 +302,19 @@ All images are arm64-native, so nothing runs under emulation on Apple Silicon.
 ## Tools
 
 ```bash
-bin/loadtest.sh /users/ 100 10      # 100 requests, 10 concurrent, tallied
+bin/loadtest.sh /balanced/ 100 10      # 100 requests, 10 concurrent, tallied
 bin/loadtest.sh '/flaky/status/200:0.5,500:0.5' 50
 bin/setup-certs.sh                  # self-signed cert for lab 07
 
 bin/chaos.sh status                 # what's currently broken
-bin/chaos.sh latency 2000           # add 2s to every orders response
+bin/chaos.sh latency 2000           # add 2s to every /network-chaos/ response
 bin/chaos.sh slow 1024              # throttle to 1KB/s
 bin/chaos.sh timeout                # accept connections, never respond
 bin/chaos.sh down                   # refuse connections
 bin/chaos.sh reset                  # undo everything
 ```
 
-Chaos only affects `/orders/` and `/cached/`. Everything else is your control
+Chaos only affects `/network-chaos/` and `/cached/`. Everything else is your control
 group.
 
 ---
@@ -363,7 +366,7 @@ directive plus a variable in `proxy_pass`, which forces runtime DNS lookups.
 
 **Every request hangs** — usually leftover chaos. `bin/chaos.sh reset`.
 
-**502 on `/users/`** — a backend is stopped. `docker compose ps`, then
+**502 on `/balanced/`** — a backend is stopped. `docker compose ps`, then
 `docker compose start echo2`.
 
 **All sequential requests go to one backend** — you removed `zone users_pool 64k;`

@@ -2,7 +2,7 @@
 
 Everything so far assumed the network either works or refuses. Real networks
 fail in more interesting ways, and those are the ones that take systems down.
-Toxiproxy sits between the gateway and the `/orders/` backend
+Toxiproxy sits between the gateway and the `/network-chaos/` backend
 (`random-status-code-with-caching`), so you can damage the wire itself at
 runtime.
 
@@ -10,7 +10,7 @@ runtime.
 bin/chaos.sh status
 ```
 
-Only `/orders/` and `/cached/` route through it. `/users/` and `/flaky/` are
+Only `/network-chaos/` and `/cached/` route through it. `/balanced/` and `/flaky/` are
 unaffected, which is useful — you always have a control group.
 
 ## Step 1 — the four ways a backend fails
@@ -29,7 +29,7 @@ for mode in down latency timeout; do
   bin/chaos.sh $mode > /dev/null
   printf '%-8s ' "$mode"
   curl -s -o /dev/null -w 'code=%{http_code} time=%{time_total}s\n' \
-    --max-time 10 http://localhost:8080/orders/get
+    --max-time 10 http://localhost:8080/network-chaos/get
 done
 bin/chaos.sh reset
 ```
@@ -46,7 +46,7 @@ stopping; they fail by getting slow.
 
 ```bash
 bin/chaos.sh latency 200
-bin/loadtest.sh /orders/get 30 5
+bin/loadtest.sh /network-chaos/get 30 5
 bin/chaos.sh reset
 ```
 
@@ -63,8 +63,8 @@ almost nothing about what users experience.
 
 ```bash
 bin/chaos.sh slow 2048
-curl -s -o /dev/null -w 'small: %{time_total}s\n' http://localhost:8080/orders/bytes/1024
-curl -s -o /dev/null -w 'large: %{time_total}s\n' http://localhost:8080/orders/bytes/102400
+curl -s -o /dev/null -w 'small: %{time_total}s\n' http://localhost:8080/network-chaos/bytes/1024
+curl -s -o /dev/null -w 'large: %{time_total}s\n' http://localhost:8080/network-chaos/bytes/102400
 bin/chaos.sh reset
 ```
 
@@ -86,12 +86,12 @@ bin/chaos.sh timeout
 Now compare three routes:
 
 ```bash
-curl -s -o /dev/null -w 'plain:  %{http_code} in %{time_total}s\n' --max-time 70 http://localhost:8080/orders/get
+curl -s -o /dev/null -w 'plain:  %{http_code} in %{time_total}s\n' --max-time 70 http://localhost:8080/network-chaos/get
 curl -s -o /dev/null -w 'cached: %{http_code} in %{time_total}s\n' --max-time 70 http://localhost:8080/cached/uuid
 bin/chaos.sh reset
 ```
 
-If you did labs 4 and 5, `/orders/` fails fast with a 504 (timeouts) and
+If you did labs 4 and 5, `/network-chaos/` fails fast with a 504 (timeouts) and
 `/cached/` serves a `STALE` 200 (`proxy_cache_use_stale`). One route is down,
 the other is still serving users, and the difference is four lines of config.
 
@@ -108,7 +108,7 @@ Run this and watch the gateway log:
 
 ```bash
 bin/chaos.sh latency 2000
-curl -s -o /dev/null http://localhost:8080/orders/get
+curl -s -o /dev/null http://localhost:8080/network-chaos/get
 bin/chaos.sh reset
 ```
 

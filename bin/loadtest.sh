@@ -5,7 +5,7 @@
 # usage: bin/loadtest.sh <path-or-url> [count] [concurrency]
 #
 # examples:
-#   bin/loadtest.sh /users/                     100 requests, 1 at a time
+#   bin/loadtest.sh /balanced/                     100 requests, 1 at a time
 #   bin/loadtest.sh /limited/ 40 10             40 requests, 10 in flight
 #   bin/loadtest.sh '/flaky/status/200:0.5,500:0.5' 50
 #
@@ -14,7 +14,7 @@
 
 set -uo pipefail
 
-TARGET="${1:-/users/}"
+TARGET="${1:-/balanced/}"
 COUNT="${2:-100}"
 CONC="${3:-1}"
 

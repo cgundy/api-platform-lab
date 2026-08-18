@@ -42,7 +42,7 @@ reset: ## full reset: remove volumes, rebuild from scratch
 test: ## run the smoke test (bin/test.sh)
 	bin/test.sh
 
-loadtest: ## bin/loadtest.sh ROUTE N CONCURRENCY - e.g. make loadtest ROUTE=/users/ N=100 C=10
+loadtest: ## bin/loadtest.sh ROUTE N CONCURRENCY - e.g. make loadtest ROUTE=/balanced/ N=100 C=10
 	bin/loadtest.sh $(ROUTE) $(N) $(C)
 
 chaos-reset: ## undo any toxiproxy chaos

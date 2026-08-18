@@ -7,7 +7,7 @@ outage. Both defaults are wrong for an API.
 
 ```bash
 bin/chaos.sh latency 5000
-time curl -s -o /dev/null http://localhost:8080/orders/get
+time curl -s -o /dev/null http://localhost:8080/network-chaos/get
 bin/chaos.sh reset
 ```
 
@@ -22,7 +22,7 @@ falls over.
 
 ```bash
 bin/chaos.sh timeout
-time curl -s -o /dev/null -w '%{http_code}\n' http://localhost:8080/orders/get
+time curl -s -o /dev/null -w '%{http_code}\n' http://localhost:8080/network-chaos/get
 ```
 
 60 seconds, then `504 Gateway Timeout`. Ctrl-C if you don't want to wait.
@@ -34,7 +34,7 @@ backend is slow", and why timeouts exist.
 
 ## Step 3 — set real timeouts
 
-Uncomment in the `/orders/` block:
+Uncomment in the `/network-chaos/` block:
 
 ```nginx
 proxy_connect_timeout 2s;
@@ -45,7 +45,7 @@ proxy_read_timeout    2s;
 ```bash
 docker compose exec gateway nginx -t
 docker compose restart gateway
-time curl -s -o /dev/null -w '%{http_code}\n' http://localhost:8080/orders/get
+time curl -s -o /dev/null -w '%{http_code}\n' http://localhost:8080/network-chaos/get
 bin/chaos.sh reset
 ```
 

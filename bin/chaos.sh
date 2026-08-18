@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# Break the network between the gateway and the "orders" service, at runtime.
+# Break the network between the gateway and the /network-chaos/ backend, at runtime.
 #
 # Toxiproxy sits on the wire and applies "toxics" - latency, bandwidth caps,
 # blackholes. Nothing restarts; the damage applies to the next packet. This is
 # how you find out what your timeout settings actually do.
 #
-# Only /orders/ and /cached/ traffic goes through toxiproxy. /users/ and
+# Only /network-chaos/ and /cached/ traffic goes through toxiproxy. /balanced/ and
 # /flaky/ talk to their backends directly and are unaffected.
 
 set -euo pipefail
@@ -27,7 +27,7 @@ usage: bin/chaos.sh <command> [args]
 
 examples:
   bin/chaos.sh latency 3000
-  curl -s -o /dev/null -w '%{time_total}s\n' http://localhost:8080/orders/get
+  curl -s -o /dev/null -w '%{time_total}s\n' http://localhost:8080/network-chaos/get
   bin/chaos.sh reset
 EOF
 }

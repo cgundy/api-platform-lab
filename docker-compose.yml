@@ -128,7 +128,7 @@ services:
     mem_limit: 256m
 
   # ---------------------------------------------------------------------------
-  # Backend for the /orders/ route: go-httpbin, same image as the two
+  # Backend for the /network-chaos/ route: go-httpbin, same image as the two
   # random-status-code containers below. Named for what differentiates it
   # from them here: it's also used for /delay/N, /cache/N, and /etag/X, and
   # its traffic is routed THROUGH toxiproxy (see below) rather than hit
@@ -177,7 +177,7 @@ services:
     mem_limit: 128m
 
   # ---------------------------------------------------------------------------
-  # Toxiproxy sits on the wire between the gateway and the /orders/ backend.
+  # Toxiproxy sits on the wire between the gateway and the /network-chaos/ backend.
   # Its admin API (:8474) lets you add latency, throttle bandwidth, or
   # blackhole the connection at runtime - no restarts. See bin/chaos.sh.
   # ---------------------------------------------------------------------------

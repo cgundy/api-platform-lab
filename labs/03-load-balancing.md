@@ -1,6 +1,6 @@
 # Lab 03 — Load balancing
 
-You already have two `users` instances behind one pool. This lab is about
+You already have two `echo` instances behind one pool. This lab is about
 watching the distribution change, and about what happens when one instance dies.
 
 Keep `docker compose logs -f gateway` open for all of it — `upstream=` is the
@@ -10,7 +10,7 @@ whole story.
 
 ```bash
 for i in $(seq 1 6); do
-  curl -s http://localhost:8080/users/hostname \
+  curl -s http://localhost:8080/balanced/hostname \
     | python3 -c 'import sys,json; print(json.load(sys.stdin)["os"]["hostname"])'
 done
 ```
@@ -26,7 +26,7 @@ The pool starts with `zone users_pool 64k;`. Delete that line and restart:
 ```bash
 docker compose restart gateway
 for i in $(seq 1 8); do
-  curl -s http://localhost:8080/users/hostname \
+  curl -s http://localhost:8080/balanced/hostname \
     | python3 -c 'import sys,json; print(json.load(sys.stdin)["os"]["hostname"])'
 done
 ```
@@ -34,8 +34,8 @@ done
 Every request now hits `echo1`. But run concurrent load and check the log:
 
 ```bash
-bin/loadtest.sh /users/ 60 8 > /dev/null
-docker compose logs gateway | grep '"GET /users/ ' | tail -60 \
+bin/loadtest.sh /balanced/ 60 8 > /dev/null
+docker compose logs gateway | grep '"GET /balanced/ ' | tail -60 \
   | sed 's/.*upstream=\([^ ]*\).*/\1/' | sort | uniq -c
 ```
 
@@ -68,14 +68,14 @@ upstream users_pool {
 
 ```bash
 docker compose restart gateway
-bin/loadtest.sh /users/hostname 40 1
+bin/loadtest.sh /balanced/hostname 40 1
 ```
 
 Then count how it actually split:
 
 ```bash
 for i in $(seq 1 40); do
-  curl -s http://localhost:8080/users/hostname \
+  curl -s http://localhost:8080/balanced/hostname \
     | python3 -c 'import sys,json; print(json.load(sys.stdin)["os"]["hostname"])'
 done | sort | uniq -c
 ```
@@ -94,7 +94,7 @@ weakness shows up when request costs vary wildly:
 for i in $(seq 1 5); do curl -s http://localhost:9003/delay/5 >/dev/null & done
 
 # terminal 2 - normal traffic
-bin/loadtest.sh /users/ 20 4
+bin/loadtest.sh /balanced/ 20 4
 ```
 
 `least_conn` sends each new request to whichever backend has the fewest requests
@@ -108,7 +108,7 @@ Uncomment `ip_hash;` instead:
 ```bash
 docker compose restart gateway
 for i in $(seq 1 6); do
-  curl -s http://localhost:8080/users/hostname \
+  curl -s http://localhost:8080/balanced/hostname \
     | python3 -c 'import sys,json; print(json.load(sys.stdin)["os"]["hostname"])'
 done
 ```
@@ -131,7 +131,7 @@ With the pool back to plain round-robin:
 
 ```bash
 docker compose stop echo2
-bin/loadtest.sh /users/ 20 1
+bin/loadtest.sh /balanced/ 20 1
 ```
 
 You'll see a few 502s at first, then clean 200s. nginx noticed the connection
@@ -184,7 +184,7 @@ a steady supply of sockets in `TIME_WAIT`.
 `proxy-headers.conf` sets the version. Measure it:
 
 ```bash
-bin/loadtest.sh /users/ 200 10
+bin/loadtest.sh /balanced/ 200 10
 ```
 
 On a local network the win is small. Across a real network, where a handshake

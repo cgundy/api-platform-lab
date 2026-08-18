@@ -179,7 +179,7 @@ stale copy rather than queueing. Combined with
 None of the above tells you how to *invalidate*. Open-source nginx has no purge
 API (`proxy_cache_purge` is nginx Plus), so your options are TTLs short enough
 that staleness is tolerable, or a versioned cache key you can bump —
-`/v2/users/...` — which invalidates by making the old key unreachable rather
+`/v2/balanced/...` — which invalidates by making the old key unreachable rather
 than by deleting anything.
 
 The general lesson: cache invalidation is a data-modelling problem, not a
