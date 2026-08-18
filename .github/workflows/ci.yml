@@ -1,0 +1,39 @@
+name: CI
+
+# Smoke test only: can the stack come up and answer? Runs in about a minute.
+# Free on GitHub-hosted runners - ubuntu-latest already has Docker and Compose,
+# so there is nothing to install.
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    # Weekly. Nothing here changes on its own - this exists because every image
+    # is pinned by digest, so if a publisher deletes one the pull fails. Better
+    # to hear about it on a Monday than the next time you sit down to use this.
+    - cron: "0 6 * * 1"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Bring the stack up and check it
+        run: bin/test.sh --up
+
+      - name: Dump logs on failure
+        if: failure()
+        run: |
+          docker compose ps
+          docker compose logs --tail 200
+
+      - name: Tear down
+        if: always()
+        run: docker compose down -v --remove-orphans

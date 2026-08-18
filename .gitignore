@@ -1,0 +1,10 @@
+# bin/setup-certs.sh generates a self-signed cert and its PRIVATE KEY here.
+# Never commit a private key, not even a throwaway lab one - it teaches the
+# wrong reflex, and secret scanners will (correctly) flag it.
+# Anyone cloning this repo runs bin/setup-certs.sh to make their own.
+nginx/certs/
+
+# nginx proxy_cache_path writes here once lab 5 is enabled.
+nginx/cache/
+
+.DS_Store

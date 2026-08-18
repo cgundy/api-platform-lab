@@ -1,0 +1,178 @@
+name: api-platform-lab
+
+# ==============================================================================
+# SECURITY POSTURE
+#
+# Every image is pinned by DIGEST, not just by tag. A tag is a mutable pointer -
+# the publisher can push different bytes to `nginx:1.27-alpine` tomorrow and you
+# would silently run them. A digest is content addressing: those exact bytes or
+# the pull fails. The tag is kept alongside it purely for human readability.
+#
+# Refresh digests deliberately, never automatically:
+#   docker pull <image>:<tag>
+#   docker image inspect <image>:<tag> --format '{{index .RepoDigests 0}}'
+# Use the multi-arch INDEX digest that command returns - a platform-specific
+# manifest digest would break this file on non-arm64 machines.
+#
+# Also applied here:
+#   - all ports bound to 127.0.0.1, so nothing is reachable from your network
+#   - cap_drop: ALL, with only the capabilities each image actually needs
+#   - no-new-privileges, blocking setuid escalation inside the container
+#   - memory limits, so a runaway container cannot eat the VM
+#   - every bind mount is :ro and inside this project directory
+#
+# Not applied: nothing is privileged, the docker socket is not mounted, no
+# host networking, and there are no Dockerfiles - nothing is built, only pulled.
+#
+# Provenance, stated plainly: nginx is a Docker Official Image. toxiproxy is
+# published by Shopify's GitHub org. go-httpbin and http-https-echo are
+# individuals' repos - both well-known open-source projects, both still
+# strangers on the internet.
+# ==============================================================================
+#
+#   client (you, with curl)
+#        |
+#   gateway (nginx)  :8080 http  :8443 https
+#        |
+#        +--> users_pool  --> users1 / users2   (echo servers, show what the proxy did)
+#        +--> orders_pool --> toxiproxy --> orders  (network chaos lives here)
+#        +--> flaky_pool  --> flaky1 / flaky2   (return 500s on demand)
+#
+# Every upstream is ALSO published on localhost (ports 9001-9005) so you can
+# compare "straight to the service" against "through the gateway".
+
+services:
+  # ---------------------------------------------------------------------------
+  # The gateway. This is the only thing you edit.
+  # ---------------------------------------------------------------------------
+  gateway:
+    image: nginx:1.27-alpine@sha256:65645c7bb6a0661892a8b03b89d0743208a18dd2f3f17a54ef4b76fb8e2f2a10
+    container_name: lab-gateway
+    hostname: gateway
+    ports:
+      - "127.0.0.1:8080:80"
+      - "127.0.0.1:8443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/snippets:/etc/nginx/snippets:ro
+      - ./nginx/certs:/etc/nginx/certs:ro
+    # nginx starts as root to bind :80 and read certs, then drops to the nginx
+    # user for its workers - hence these four and nothing else.
+    cap_drop: [ALL]
+    cap_add: [CHOWN, SETUID, SETGID, NET_BIND_SERVICE]
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 256m
+    depends_on:
+      - users1
+      - users2
+      - orders
+      - flaky1
+      - flaky2
+      - toxiproxy
+    healthcheck:
+      # 127.0.0.1, not localhost: busybox wget tries ::1 first, and this nginx
+      # only listens on IPv4 (the image's IPv6 entrypoint script patches
+      # conf.d/default.conf, which our config does not include).
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+
+  # ---------------------------------------------------------------------------
+  # "users" service: two identical instances so load balancing has something to
+  # balance. This image echoes the request back as JSON - headers, path, source
+  # IP - which is how you SEE what a proxy does to a request.
+  # ---------------------------------------------------------------------------
+  users1:
+    image: mendhak/http-https-echo:35@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592
+    container_name: lab-users1
+    hostname: users1
+    environment:
+      HTTP_PORT: "8080"
+      HTTPS_PORT: "8443"
+    ports:
+      - "127.0.0.1:9001:8080"
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 256m
+
+  users2:
+    image: mendhak/http-https-echo:35@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592
+    container_name: lab-users2
+    hostname: users2
+    environment:
+      HTTP_PORT: "8080"
+      HTTPS_PORT: "8443"
+    ports:
+      - "127.0.0.1:9002:8080"
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 256m
+
+  # ---------------------------------------------------------------------------
+  # "orders" service: go-httpbin. Has /delay/N, /cache/N, /etag/X, /status/NNN
+  # built in, so slow and cacheable responses need no code.
+  # Gateway traffic to this one is routed THROUGH toxiproxy (see below).
+  # ---------------------------------------------------------------------------
+  orders:
+    image: mccutchen/go-httpbin:2.25.0@sha256:20739736d4eb8dc1b998dff701f437b8bd62dcc46492bd0d861e89890ca36500
+    container_name: lab-orders
+    hostname: orders
+    ports:
+      - "127.0.0.1:9003:8080"
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 128m
+
+  # ---------------------------------------------------------------------------
+  # "flaky" service: two instances of the same image. Ask them for
+  # /status/200:0.5,500:0.5 and half the responses fail - which is what makes
+  # retries and circuit-breaking observable.
+  # ---------------------------------------------------------------------------
+  flaky1:
+    image: mccutchen/go-httpbin:2.25.0@sha256:20739736d4eb8dc1b998dff701f437b8bd62dcc46492bd0d861e89890ca36500
+    container_name: lab-flaky1
+    hostname: flaky1
+    ports:
+      - "127.0.0.1:9004:8080"
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 128m
+
+  flaky2:
+    image: mccutchen/go-httpbin:2.25.0@sha256:20739736d4eb8dc1b998dff701f437b8bd62dcc46492bd0d861e89890ca36500
+    container_name: lab-flaky2
+    hostname: flaky2
+    ports:
+      - "127.0.0.1:9005:8080"
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 128m
+
+  # ---------------------------------------------------------------------------
+  # Toxiproxy sits on the wire between the gateway and "orders". Its admin API
+  # (:8474) lets you add latency, throttle bandwidth, or blackhole the
+  # connection at runtime - no restarts. See bin/chaos.sh.
+  # ---------------------------------------------------------------------------
+  toxiproxy:
+    image: ghcr.io/shopify/toxiproxy:2.12.0@sha256:9378ed52a28bc50edc1350f936f518f31fa95f0d15917d6eb40b8e376d1a214e
+    container_name: lab-toxiproxy
+    hostname: toxiproxy
+    command: ["-host=0.0.0.0", "-config=/config/toxiproxy.json"]
+    volumes:
+      - ./toxiproxy/toxiproxy.json:/config/toxiproxy.json:ro
+    ports:
+      - "127.0.0.1:8474:8474"
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 128m
+    depends_on:
+      - orders
