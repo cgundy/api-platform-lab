@@ -5,7 +5,6 @@ name: CI
 # so there is nothing to install.
 
 on:
-  push:
   pull_request:
   workflow_dispatch:
   schedule:
