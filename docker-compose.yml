@@ -3,16 +3,6 @@ name: api-platform-lab
 # ==============================================================================
 # SECURITY POSTURE
 #
-# Every image is pinned by DIGEST, not just by tag. A tag is a mutable pointer -
-# the publisher can push different bytes to `nginx:1.27-alpine` tomorrow and you
-# would silently run them. A digest is content addressing: those exact bytes or
-# the pull fails. The tag is kept alongside it purely for human readability.
-#
-# Refresh digests deliberately, never automatically:
-#   docker pull <image>:<tag>
-#   docker image inspect <image>:<tag> --format '{{index .RepoDigests 0}}'
-# Use the multi-arch INDEX digest that command returns - a platform-specific
-# manifest digest would break this file on non-arm64 machines.
 #
 # Also applied here:
 #   - all ports bound to 127.0.0.1, so nothing is reachable from your network
