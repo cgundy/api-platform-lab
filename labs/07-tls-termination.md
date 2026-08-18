@@ -53,7 +53,7 @@ and encrypt the traffic to themselves.
 The blunt way:
 
 ```bash
-curl -k https://localhost:8443/headers | python3 -m json.tool
+curl -k https://localhost:8443/headers
 ```
 
 `-k` disables verification entirely. Fine here, a serious problem in any script
@@ -72,7 +72,7 @@ each other without a public CA.
 ## Step 4 — what the backend can see
 
 ```bash
-curl -k -s https://localhost:8443/headers | python3 -m json.tool
+curl -k -s https://localhost:8443/headers
 ```
 
 Look at `x-forwarded-proto: https`. The backend received a **plain HTTP**

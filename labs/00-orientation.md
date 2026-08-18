@@ -51,7 +51,7 @@ window 2". The log format is defined at the top of `nginx/nginx.conf`:
 The echo server tells you exactly what it received:
 
 ```bash
-curl -s http://localhost:9001/hello | python3 -m json.tool
+curl -s http://localhost:9001/hello
 ```
 
 Note `path`, `headers`, and `os.hostname`. That `hostname` is how you'll tell
@@ -78,7 +78,7 @@ retries and circuit breakers observable in labs 4 and 8.
 ```bash
 curl -s http://localhost:8080/
 curl -s http://localhost:8080/healthz
-curl -s http://localhost:8080/balanced/anything | python3 -m json.tool
+curl -s http://localhost:8080/balanced/anything
 ```
 
 Watch the log window while you run the last one a few times. The `upstream=`

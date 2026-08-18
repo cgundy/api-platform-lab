@@ -139,7 +139,7 @@ about 15 seconds.
 
 ```bash
 curl http://localhost:8080/healthz
-curl -s http://localhost:8080/balanced/hello | python3 -m json.tool
+curl -s http://localhost:8080/balanced/hello
 ```
 
 The second one returns a JSON echo of your own request as the backend received

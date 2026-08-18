@@ -10,7 +10,7 @@ follows from that.
 Ask the backend directly, bypassing the gateway entirely:
 
 ```bash
-curl -s http://localhost:9001/hello | python3 -m json.tool
+curl -s http://localhost:9001/hello
 ```
 
 Look at `headers` and `path`. That's the truth about your request.
@@ -21,7 +21,7 @@ Look at `headers` and `path`. That's the truth about your request.
 header handling:
 
 ```bash
-curl -s http://localhost:8080/lab1/hello | python3 -m json.tool
+curl -s http://localhost:8080/lab1/hello
 ```
 
 Diff the two outputs. Four things changed, and every one of them breaks
@@ -52,7 +52,7 @@ logged a request, and nothing links them.
 `include /etc/nginx/snippets/proxy-headers.conf` added:
 
 ```bash
-curl -s http://localhost:8080/lab1-fixed/hello | python3 -m json.tool
+curl -s http://localhost:8080/lab1-fixed/hello
 ```
 
 Now `host` is `localhost`, and the backend gets `x-real-ip`,
@@ -72,7 +72,7 @@ Try to make nginx forward a `Connection` header:
 
 ```bash
 curl -s -H 'Connection: keep-alive' -H 'X-Mine: kept' \
-  http://localhost:8080/lab1-fixed/hello | python3 -m json.tool
+  http://localhost:8080/lab1-fixed/hello
 ```
 
 `x-mine` arrives. `connection` did not — nginx replaced it. `Connection`,
@@ -90,7 +90,7 @@ Now forge the header:
 
 ```bash
 curl -s -H 'X-Forwarded-For: 1.2.3.4' \
-  http://localhost:8080/lab1-fixed/hello | python3 -m json.tool
+  http://localhost:8080/lab1-fixed/hello
 ```
 
 The backend receives `1.2.3.4, 172.18.0.1` — your lie, with the real address
