@@ -163,6 +163,13 @@ All commands below assume you're in the `api-platform-lab` directory, since
 `docker compose` reads `docker-compose.yml` from the current directory (or
 finds it by the `name: api-platform-lab` set at the top of the file).
 
+There's also a [`Makefile`](Makefile) with a short target for most of these —
+run `make help` to list them (`make up`, `make ps`, `make logs`,
+`make logs SERVICE=orders`, `make check`, `make restart`, `make reload`,
+`make reset`, ...). `make <TAB>` tab-completes target names in bash and zsh
+without any extra setup, so it's the fastest way to drive the lab without
+typing `docker compose` every time.
+
 ### Starting and stopping
 
 ```bash
