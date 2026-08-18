@@ -1,5 +1,7 @@
 # API Platform Lab
 
+> This lab was created by AI to interactively learn how gateways work.
+
 A local API gateway you can break on purpose.
 
 Seven containers, **zero application code**: nginx out front, five stock backend
