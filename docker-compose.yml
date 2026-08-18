@@ -40,11 +40,13 @@ name: api-platform-lab
 # reachable at all. No entry, no door, no access - which is exactly the
 # default posture you want for anything that doesn't need to be public.
 #
-# Every service below opens exactly one door, because each is one HTTP server.
-# Where a service listens on the box side is arbitrary bookkeeping, not
-# meaningful - what matters is *that* a door exists, and that every one of
-# them is bound to 127.0.0.1 (see SECURITY POSTURE above), so the only thing
-# that can walk through any of these doors is you, on this machine.
+# Each line reads "host_ip:host_port:container_port". The last number is the
+# one that matters: it's the port the process *inside* the container actually
+# listens on, fixed by whoever built that image (or an env var, where noted).
+# The middle number is just the door's address on your Mac - it can be
+# anything free, and below is what you'd actually type into curl. Every door
+# here is bound to 127.0.0.1 (see SECURITY POSTURE above), so the only thing
+# that can walk through any of them is you, on this machine.
 # ------------------------------------------------------------------------------
 
 services:
@@ -55,7 +57,8 @@ services:
     image: nginx:1.27-alpine@sha256:65645c7bb6a0661892a8b03b89d0743208a18dd2f3f17a54ef4b76fb8e2f2a10
     container_name: lab-gateway
     hostname: gateway
-    # The gateway's door - this is the one you actually knock on with curl.
+    # curl this side (8080/8443) - the other side (80/443) is just where
+    # nginx listens inside its own container.
     ports:
       - "127.0.0.1:8080:80"
       - "127.0.0.1:8443:443"
@@ -99,8 +102,9 @@ services:
     environment:
       HTTP_PORT: "8080"
       HTTPS_PORT: "8443"
-    # This backend's own door - lets you compare "straight to the service"
-    # against going through the gateway.
+    # curl this side (9001) to hit the backend directly, bypassing the
+    # gateway entirely - the other side (8080) is just where it listens
+    # inside its own container, set by HTTP_PORT above.
     ports:
       - "127.0.0.1:9001:8080"
     cap_drop: [ALL]
@@ -115,7 +119,7 @@ services:
     environment:
       HTTP_PORT: "8080"
       HTTPS_PORT: "8443"
-    # Its own door, same idea as users1.
+    # Same idea as users1's ports, one door down.
     ports:
       - "127.0.0.1:9002:8080"
     cap_drop: [ALL]
@@ -132,7 +136,8 @@ services:
     image: mccutchen/go-httpbin:2.25.0@sha256:20739736d4eb8dc1b998dff701f437b8bd62dcc46492bd0d861e89890ca36500
     container_name: lab-orders
     hostname: orders
-    # Its own door.
+    # curl this side (9003) to hit it directly - the other side (8080) is
+    # go-httpbin's own default listen port, not something we set.
     ports:
       - "127.0.0.1:9003:8080"
     cap_drop: [ALL]
@@ -149,7 +154,7 @@ services:
     image: mccutchen/go-httpbin:2.25.0@sha256:20739736d4eb8dc1b998dff701f437b8bd62dcc46492bd0d861e89890ca36500
     container_name: lab-flaky1
     hostname: flaky1
-    # Its own door.
+    # Same idea as orders' ports.
     ports:
       - "127.0.0.1:9004:8080"
     cap_drop: [ALL]
@@ -162,7 +167,7 @@ services:
     container_name: lab-flaky2
     hostname: flaky2
     ports:
-      - "127.0.0.1:9005:8080"  # its own door, same idea as flaky1
+      - "127.0.0.1:9005:8080"  # same idea as flaky1's ports
     cap_drop: [ALL]
     security_opt:
       - no-new-privileges:true
@@ -180,11 +185,11 @@ services:
     command: ["-host=0.0.0.0", "-config=/config/toxiproxy.json"]
     volumes:
       - ./toxiproxy/toxiproxy.json:/config/toxiproxy.json:ro
-    # This container actually has two doors, but only one is opened here:
-    # its admin door (for bin/chaos.sh to inject/remove chaos through). The
-    # door the gateway's traffic actually flows through stays unopened on
-    # purpose, reachable only from other containers - so there's no way to
-    # bypass the chaos layer from your host.
+    # This one door (8474) reaches toxiproxy's admin API, which is what
+    # bin/chaos.sh talks to. It also has a second listener inside, the one
+    # that actually proxies traffic to orders (defined in toxiproxy.json) -
+    # that one has no door here on purpose, so it's only reachable from other
+    # containers, never from your host.
     ports:
       - "127.0.0.1:8474:8474"
     cap_drop: [ALL]
