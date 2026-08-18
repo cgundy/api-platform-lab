@@ -10,8 +10,8 @@ Before changing anything, get familiar with the pieces. ~10 minutes.
       v
   gateway (nginx)  :8080
       |
-      +--> users_pool  --> echo1 :9001 , echo2 :9002                                  echo servers
-      +--> orders_pool --> toxiproxy --> random-status-code-with-caching :9003        go-httpbin
+      +--> echo_pool  --> echo1 :9001 , echo2 :9002                                  echo servers
+      +--> toxiproxy_pool --> toxiproxy --> random-status-code-with-caching :9003        go-httpbin
       +--> flaky_pool  --> random-status-code-1 :9004 , random-status-code-2 :9005    go-httpbin
 ```
 

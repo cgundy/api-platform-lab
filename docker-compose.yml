@@ -24,8 +24,8 @@ name: api-platform-lab
 #        |
 #   gateway (nginx)  :8080 http  :8443 https
 #        |
-#        +--> users_pool  --> echo1 / echo2   (echo servers, show what the proxy did)
-#        +--> orders_pool --> toxiproxy --> random-status-code-with-caching  (network chaos lives here)
+#        +--> echo_pool  --> echo1 / echo2   (echo servers, show what the proxy did)
+#        +--> toxiproxy_pool --> toxiproxy --> random-status-code-with-caching  (network chaos lives here)
 #        +--> flaky_pool  --> random-status-code-1 / random-status-code-2   (return 500s on demand)
 #
 # Every upstream is ALSO published on localhost (ports 9001-9005) so you can
@@ -91,9 +91,9 @@ services:
       start_period: 5s
 
   # ---------------------------------------------------------------------------
-  # "users" service: two identical instances so load balancing has something to
-  # balance. This image echoes the request back as JSON - headers, path, source
-  # IP - which is how you SEE what a proxy does to a request.
+  # Two identical echo instances, so load balancing has something to balance.
+  # This image echoes the request back as JSON - headers, path, source IP -
+  # which is how you SEE what a proxy does to a request.
   # ---------------------------------------------------------------------------
   echo1:
     image: mendhak/http-https-echo:35@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592

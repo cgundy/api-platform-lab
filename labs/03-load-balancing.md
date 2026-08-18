@@ -21,7 +21,7 @@ default and it needs no configuration at all — listing two `server` lines in a
 
 ## Step 1b — why that only works because of one line
 
-The pool starts with `zone users_pool 64k;`. Delete that line and restart:
+The pool starts with `zone echo_pool 64k;`. Delete that line and restart:
 
 ```bash
 docker compose restart gateway
@@ -57,10 +57,10 @@ idea that request #3 is a 4-second report and request #4 is a 2ms health check.
 
 ## Step 2 — weights
 
-Change `users_pool` in `nginx.conf`:
+Change `echo_pool` in `nginx.conf`:
 
 ```nginx
-upstream users_pool {
+upstream echo_pool {
     server echo1:8080 weight=3;
     server echo2:8080;
 }

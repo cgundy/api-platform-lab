@@ -369,7 +369,7 @@ directive plus a variable in `proxy_pass`, which forces runtime DNS lookups.
 **502 on `/balanced/`** — a backend is stopped. `docker compose ps`, then
 `docker compose start echo2`.
 
-**All sequential requests go to one backend** — you removed `zone users_pool 64k;`
+**All sequential requests go to one backend** — you removed `zone echo_pool 64k;`
 from the upstream block. Without it every nginx worker keeps a separate
 round-robin counter, and sequential requests each land on a different idle
 worker that starts from the first backend. Lab 03 step 1b covers this.

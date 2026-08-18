@@ -11,7 +11,7 @@
 set -euo pipefail
 
 API="${TOXIPROXY_API:-http://localhost:8474}"
-PROXY="orders"
+PROXY="network-chaos"
 
 usage() {
   cat <<'EOF'
@@ -60,20 +60,20 @@ case "${1:-}" in
     ms="${2:-1000}"
     clear_all
     add_toxic "{\"name\":\"lab_latency\",\"type\":\"latency\",\"stream\":\"downstream\",\"attributes\":{\"latency\":$ms,\"jitter\":100}}"
-    echo "orders now responds ${ms}ms slower (+/- 100ms jitter)"
+    echo "backend now responds ${ms}ms slower (+/- 100ms jitter)"
     ;;
 
   slow)
     rate="${2:-1024}"
     clear_all
     add_toxic "{\"name\":\"lab_bandwidth\",\"type\":\"bandwidth\",\"stream\":\"downstream\",\"attributes\":{\"rate\":$rate}}"
-    echo "orders downstream throttled to ${rate} bytes/sec"
+    echo "backend downstream throttled to ${rate} bytes/sec"
     ;;
 
   timeout)
     clear_all
     add_toxic "{\"name\":\"lab_timeout\",\"type\":\"timeout\",\"stream\":\"downstream\",\"attributes\":{\"timeout\":0}}"
-    echo "orders now accepts connections and never responds"
+    echo "backend now accepts connections and never responds"
     echo "(this is the nasty failure mode - a refused connection fails fast,"
     echo " a hung one ties up a gateway worker until proxy_read_timeout)"
     ;;
@@ -81,20 +81,20 @@ case "${1:-}" in
   down)
     curl -sS -X POST "$API/proxies/$PROXY" \
       -H 'Content-Type: application/json' -d '{"enabled":false}' >/dev/null
-    echo "orders is offline - connections are refused"
+    echo "backend is offline - connections are refused"
     ;;
 
   up)
     curl -sS -X POST "$API/proxies/$PROXY" \
       -H 'Content-Type: application/json' -d '{"enabled":true}' >/dev/null
-    echo "orders is back online"
+    echo "backend is back online"
     ;;
 
   reset)
     clear_all
     curl -sS -X POST "$API/proxies/$PROXY" \
       -H 'Content-Type: application/json' -d '{"enabled":true}' >/dev/null
-    echo "all toxics removed, orders enabled"
+    echo "all toxics removed, backend enabled"
     ;;
 
   *)

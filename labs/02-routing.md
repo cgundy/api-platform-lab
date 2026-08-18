@@ -42,8 +42,8 @@ categories that are ranked.
 This one line decides what path your backend receives:
 
 ```nginx
-proxy_pass http://users_pool/;   # with slash: strip the location prefix
-proxy_pass http://users_pool;    # without:   pass the whole path through
+proxy_pass http://echo_pool/;   # with slash: strip the location prefix
+proxy_pass http://echo_pool;    # without:   pass the whole path through
 ```
 
 See it:
@@ -66,7 +66,7 @@ right or wrong — but a backend that has no idea what `/nostrip` is will return
 Change `/network-chaos/` in `nginx.conf` to drop its trailing slash:
 
 ```nginx
-proxy_pass http://orders_pool;
+proxy_pass http://toxiproxy_pool;
 ```
 
 Then:
@@ -90,7 +90,7 @@ your API is versioned but the service isn't. Add this to the server block:
 location /api/v1/balanced/ {
     include /etc/nginx/snippets/proxy-headers.conf;
     rewrite ^/api/v1/balanced/(.*)$ /$1 break;
-    proxy_pass http://users_pool;
+    proxy_pass http://echo_pool;
 }
 ```
 
@@ -134,7 +134,7 @@ implemented at the gateway:
 
 ```nginx
 map $http_x_canary $backend_pool {
-    default  "users_pool";
+    default  "echo_pool";
     "true"   "canary_pool";
 }
 ```

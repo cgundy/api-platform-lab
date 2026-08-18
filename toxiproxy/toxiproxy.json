@@ -1,6 +1,6 @@
 [
   {
-    "name": "orders",
+    "name": "network-chaos",
     "listen": "0.0.0.0:21001",
     "upstream": "random-status-code-with-caching:8080",
     "enabled": true
